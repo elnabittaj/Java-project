@@ -1,0 +1,406 @@
+package database;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.SwingUtilities;
+
+public class StudentFinancialPlanner extends JFrame {
+
+    CardLayout cardLayout;
+    JPanel mainPanel;
+
+    // Database connection info
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/student_finance";
+    private static final String DB_USER = "root"; // ← your MySQL username
+    private static final String DB_PASSWORD = "Rose!12140"; // ← your MySQL password
+
+    public StudentFinancialPlanner() {
+        setTitle("Student Financial Planning & Goal Tracker System");
+        setSize(1000, 650);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        JLabel titleLabel = new JLabel("Student Financial Planning & Goal Tracker", JLabel.CENTER);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        titleLabel.setOpaque(true);
+        titleLabel.setBackground(new Color(51, 102, 153));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setPreferredSize(new Dimension(1000, 60));
+        add(titleLabel, BorderLayout.NORTH);
+
+        JPanel sidebar = new JPanel(new GridLayout(8, 1, 10, 10));
+        sidebar.setBackground(new Color(230, 230, 250));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
+
+        String[] buttons = {"Dashboard", "Add Expense", "Set Budget", "Create Goal", "Savings Calculator", "About", "Logout"};
+        for (String text : buttons) {
+            JButton btn = new JButton(text);
+            btn.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+            btn.setFocusPainted(false);
+            btn.setBackground(Color.WHITE);
+            btn.addActionListener(new MenuActionListener());
+            sidebar.add(btn);
+        }
+        add(sidebar, BorderLayout.WEST);
+
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
+        mainPanel.add(new DashboardPanel(), "Dashboard");
+        mainPanel.add(new AddExpensePanel(), "Add Expense");
+        mainPanel.add(new BudgetPanel(), "Set Budget");
+        mainPanel.add(new GoalPanel(), "Create Goal");
+        mainPanel.add(new SavingsCalculatorPanel(), "Savings Calculator");
+        mainPanel.add(new AboutPanel(), "About");
+
+        add(mainPanel, BorderLayout.CENTER);
+        setVisible(true);
+    }
+
+    // Establish connection
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+    }
+
+    private class MenuActionListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String command = e.getActionCommand();
+            if (command.equals("Logout")) {
+                JOptionPane.showMessageDialog(null, "You have logged out successfully!");
+                System.exit(0);
+            } else {
+                cardLayout.show(mainPanel, command);
+            }
+        }
+    }
+
+    class DashboardPanel extends JPanel {
+        public DashboardPanel() {
+            setLayout(new BorderLayout());
+            JLabel label = new JLabel("<html><center><h1>Welcome to your Dashboard!</h1><br>"
+                    + "Track your expenses, set budgets, and achieve your goals!</center></html>", JLabel.CENTER);
+            add(label, BorderLayout.CENTER);
+        }
+    }
+
+    // ---------- ADD EXPENSE PANEL ----------
+    class AddExpensePanel extends JPanel {
+        JTextField amountField, dateField, noteField;
+        JComboBox<String> categoryBox;
+        JTable expenseTable;
+        DefaultTableModel model;
+
+        public AddExpensePanel() {
+            setLayout(new BorderLayout());
+
+            JPanel formPanel = new JPanel(new GridBagLayout());
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(10, 10, 10, 10);
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+
+            JLabel header = new JLabel("Add Expense", JLabel.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+            formPanel.add(header, gbc);
+
+            gbc.gridwidth = 1;
+            gbc.gridy++;
+            formPanel.add(new JLabel("Amount (₹):"), gbc);
+            gbc.gridx = 1;
+            amountField = new JTextField(15);
+            formPanel.add(amountField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            formPanel.add(new JLabel("Date (YYYY-MM-DD):"), gbc);
+            gbc.gridx = 1;
+            dateField = new JTextField();
+            formPanel.add(dateField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            formPanel.add(new JLabel("Category:"), gbc);
+            gbc.gridx = 1;
+            categoryBox = new JComboBox<>(new String[]{"Food", "Books", "Travel", "Shopping", "Other"});
+            formPanel.add(categoryBox, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            formPanel.add(new JLabel("Note:"), gbc);
+            gbc.gridx = 1;
+            noteField = new JTextField();
+            formPanel.add(noteField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            gbc.gridwidth = 2;
+            JButton addButton = new JButton("Add Expense");
+            formPanel.add(addButton, gbc);
+
+            add(formPanel, BorderLayout.NORTH);
+
+            // Table for displaying expenses
+            model = new DefaultTableModel(new String[]{"Amount", "Date", "Category", "Note"}, 0);
+            expenseTable = new JTable(model);
+            add(new JScrollPane(expenseTable), BorderLayout.CENTER);
+
+            loadExpenses();
+
+            addButton.addActionListener(e -> {
+                try (Connection conn = getConnection()) {
+                    String sql = "INSERT INTO expenses (amount, date, category, note) VALUES (?, ?, ?, ?)";
+                    PreparedStatement ps = conn.prepareStatement(sql);
+                    ps.setDouble(1, Double.parseDouble(amountField.getText()));
+                    ps.setString(2, dateField.getText());
+                    ps.setString(3, (String) categoryBox.getSelectedItem());
+                    ps.setString(4, noteField.getText());
+                    ps.executeUpdate();
+                    JOptionPane.showMessageDialog(this, "Expense Added Successfully!");
+                    loadExpenses();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+                }
+            });
+        }
+
+        private void loadExpenses() {
+            try (Connection conn = getConnection()) {
+                model.setRowCount(0);
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery("SELECT * FROM expenses");
+                while (rs.next()) {
+                    model.addRow(new Object[]{
+                        rs.getDouble("amount"), rs.getString("date"),
+                        rs.getString("category"), rs.getString("note")
+                    });
+                }
+            } catch (Exception ex) {
+                System.out.println(ex.getMessage());
+            }
+        }
+    }
+
+    // ---------- BUDGET PANEL ----------
+    class BudgetPanel extends JPanel {
+        JTextField monthField, limitField;
+        JLabel alertLabel;
+        JTable budgetTable;
+        DefaultTableModel model;
+
+        public BudgetPanel() {
+            setLayout(new BorderLayout());
+            JPanel form = new JPanel(new GridBagLayout());
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(10, 10, 10, 10);
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+
+            JLabel header = new JLabel("Set Monthly Budget", JLabel.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+            form.add(header, gbc);
+
+            gbc.gridwidth = 1;
+            gbc.gridy++;
+            form.add(new JLabel("Month:"), gbc);
+            gbc.gridx = 1;
+            monthField = new JTextField();
+            form.add(monthField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            form.add(new JLabel("Budget Limit (₹):"), gbc);
+            gbc.gridx = 1;
+            limitField = new JTextField();
+            form.add(limitField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            gbc.gridwidth = 2;
+            JButton setButton = new JButton("Set Budget");
+            form.add(setButton, gbc);
+
+            gbc.gridy++;
+            alertLabel = new JLabel("", JLabel.CENTER);
+            alertLabel.setForeground(Color.RED);
+            form.add(alertLabel, gbc);
+
+            add(form, BorderLayout.NORTH);
+
+            model = new DefaultTableModel(new String[]{"Month", "Limit (₹)"}, 0);
+            budgetTable = new JTable(model);
+            add(new JScrollPane(budgetTable), BorderLayout.CENTER);
+
+            loadBudgets();
+
+            setButton.addActionListener(e -> {
+                try (Connection conn = getConnection()) {
+                    String sql = "INSERT INTO budgets (month, limit_amount) VALUES (?, ?)";
+                    PreparedStatement ps = conn.prepareStatement(sql);
+                    ps.setString(1, monthField.getText());
+                    ps.setDouble(2, Double.parseDouble(limitField.getText()));
+                    ps.executeUpdate();
+                    alertLabel.setText("Budget set for " + monthField.getText() + ": ₹" + limitField.getText());
+                    loadBudgets();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+                }
+            });
+        }
+
+        private void loadBudgets() {
+            try (Connection conn = getConnection()) {
+                model.setRowCount(0);
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery("SELECT * FROM budgets");
+                while (rs.next()) {
+                    model.addRow(new Object[]{rs.getString("month"), rs.getDouble("limit_amount")});
+                }
+            } catch (Exception ex) {
+                System.out.println(ex.getMessage());
+            }
+        }
+    }
+
+    // ---------- GOAL PANEL ----------
+    class GoalPanel extends JPanel {
+        JTextField goalNameField, targetAmountField, deadlineField;
+        JTable goalTable;
+        DefaultTableModel model;
+
+        public GoalPanel() {
+            setLayout(new BorderLayout());
+            JPanel form = new JPanel(new GridBagLayout());
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(10, 10, 10, 10);
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+
+            JLabel header = new JLabel("Create Financial Goal", JLabel.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+            form.add(header, gbc);
+
+            gbc.gridwidth = 1;
+            gbc.gridy++;
+            form.add(new JLabel("Goal Name:"), gbc);
+            gbc.gridx = 1;
+            goalNameField = new JTextField();
+            form.add(goalNameField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            form.add(new JLabel("Target Amount (₹):"), gbc);
+            gbc.gridx = 1;
+            targetAmountField = new JTextField();
+            form.add(targetAmountField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            form.add(new JLabel("Deadline (YYYY-MM-DD):"), gbc);
+            gbc.gridx = 1;
+            deadlineField = new JTextField();
+            form.add(deadlineField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            gbc.gridwidth = 2;
+            JButton createButton = new JButton("Create Goal");
+            form.add(createButton, gbc);
+
+            add(form, BorderLayout.NORTH);
+
+            model = new DefaultTableModel(new String[]{"Goal Name", "Target", "Deadline"}, 0);
+            goalTable = new JTable(model);
+            add(new JScrollPane(goalTable), BorderLayout.CENTER);
+
+            loadGoals();
+
+            createButton.addActionListener(e -> {
+                try (Connection conn = getConnection()) {
+                    String sql = "INSERT INTO goals (name, target_amount, deadline) VALUES (?, ?, ?)";
+                    PreparedStatement ps = conn.prepareStatement(sql);
+                    ps.setString(1, goalNameField.getText());
+                    ps.setDouble(2, Double.parseDouble(targetAmountField.getText()));
+                    ps.setString(3, deadlineField.getText());
+                    ps.executeUpdate();
+                    JOptionPane.showMessageDialog(this, "Goal Created Successfully!");
+                    loadGoals();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+                }
+            });
+        }
+
+        private void loadGoals() {
+            try (Connection conn = getConnection()) {
+                model.setRowCount(0);
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery("SELECT * FROM goals");
+                while (rs.next()) {
+                    model.addRow(new Object[]{
+                        rs.getString("name"), rs.getDouble("target_amount"), rs.getString("deadline")
+                    });
+                }
+            } catch (Exception ex) {
+                System.out.println(ex.getMessage());
+            }
+        }
+    }
+
+    // ---------- SAVINGS CALCULATOR PANEL ----------
+    class SavingsCalculatorPanel extends JPanel {
+        JTextField goalAmountField, monthsField, resultField;
+        public SavingsCalculatorPanel() {
+            setLayout(new GridBagLayout());
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(10, 10, 10, 10);
+
+            JLabel header = new JLabel("Savings Calculator", JLabel.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+            add(header, gbc);
+
+            gbc.gridwidth = 1; gbc.gridy++;
+            add(new JLabel("Goal Amount (₹):"), gbc);
+            gbc.gridx = 1;
+            goalAmountField = new JTextField(10);
+            add(goalAmountField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            add(new JLabel("Months to Save:"), gbc);
+            gbc.gridx = 1;
+            monthsField = new JTextField(10);
+            add(monthsField, gbc);
+
+            gbc.gridx = 0; gbc.gridy++;
+            JButton calcBtn = new JButton("Calculate");
+            gbc.gridwidth = 2;
+            add(calcBtn, gbc);
+
+            gbc.gridy++;
+            resultField = new JTextField(15);
+            resultField.setEditable(false);
+            add(resultField, gbc);
+
+            calcBtn.addActionListener(e -> {
+                try {
+                    double goal = Double.parseDouble(goalAmountField.getText());
+                    int months = Integer.parseInt(monthsField.getText());
+                    double monthlySaving = goal / months;
+                    resultField.setText("Save ₹" + String.format("%.2f", monthlySaving) + " per month");
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Enter valid numbers!", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+        }
+    }
+
+    class AboutPanel extends JPanel {
+        public AboutPanel() {
+            setLayout(new BorderLayout());
+            JLabel label = new JLabel("<html><center><h2>About Project</h2><br>"
+                    + "This system helps students track expenses, set budgets, "
+                    + "and plan savings goals effectively.<br><br>"
+                    + "Developed by: 2nd Year CSE Students</center></html>", JLabel.CENTER);
+            add(label, BorderLayout.CENTER);
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new StudentFinancialPlanner());
+    }
+}
