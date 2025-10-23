@@ -1,0 +1,63 @@
+class SavingsCalculatorPanel extends JPanel {
+    JTextField goalAmountField, monthsField, resultField;
+    public SavingsCalculatorPanel() {
+        setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        JLabel header = new JLabel("Savings Calculator", JLabel.CENTER);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        add(header, gbc);
+
+        gbc.gridwidth = 1; gbc.gridy++;
+        add(new JLabel("Goal Amount (₹):"), gbc);
+        gbc.gridx = 1;
+        goalAmountField = new JTextField(10);
+        add(goalAmountField, gbc);
+
+        gbc.gridx = 0; gbc.gridy++;
+        add(new JLabel("Months to Save:"), gbc);
+        gbc.gridx = 1;
+        monthsField = new JTextField(10);
+        add(monthsField, gbc);
+
+        gbc.gridx = 0; gbc.gridy++;
+        JButton calcBtn = new JButton("Calculate");
+        gbc.gridwidth = 2;
+        add(calcBtn, gbc);
+
+        gbc.gridy++;
+        resultField = new JTextField(15);
+        resultField.setEditable(false);
+        add(resultField, gbc);
+
+        calcBtn.addActionListener(e -> {
+            try {
+                double goal = Double.parseDouble(goalAmountField.getText());
+                int months = Integer.parseInt(monthsField.getText());
+                double monthlySaving = goal / months;
+                resultField.setText("Save ₹" + String.format("%.2f", monthlySaving) + " per month");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Enter valid numbers!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+    }
+}
+
+class AboutPanel extends JPanel {
+    public AboutPanel() {
+        setLayout(new BorderLayout());
+        JLabel label = new JLabel("<html><center><h2>About Project</h2><br>"
+                + "This system helps students track expenses, set budgets, "
+                + "and plan savings goals effectively.<br><br>"
+                + "Developed by: 2nd Year CSE Students</center></html>", JLabel.CENTER);
+        add(label, BorderLayout.CENTER);
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new StudentFinancialPlanner());
+    }
+}
