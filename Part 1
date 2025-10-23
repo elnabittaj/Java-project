@@ -1,0 +1,88 @@
+package database;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.SwingUtilities;
+
+public class StudentFinancialPlanner extends JFrame {
+
+    CardLayout cardLayout;
+    JPanel mainPanel;
+
+    // Database connection info
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/student_finance";
+    private static final String DB_USER = "root"; // ← your MySQL username
+    private static final String DB_PASSWORD = "Rose!12140"; // ← your MySQL password
+
+    public StudentFinancialPlanner() {
+        setTitle("Student Financial Planning & Goal Tracker System");
+        setSize(1000, 650);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        JLabel titleLabel = new JLabel("Student Financial Planning & Goal Tracker", JLabel.CENTER);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        titleLabel.setOpaque(true);
+        titleLabel.setBackground(new Color(51, 102, 153));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setPreferredSize(new Dimension(1000, 60));
+        add(titleLabel, BorderLayout.NORTH);
+
+        JPanel sidebar = new JPanel(new GridLayout(8, 1, 10, 10));
+        sidebar.setBackground(new Color(230, 230, 250));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
+
+        String[] buttons = {"Dashboard", "Add Expense", "Set Budget", "Create Goal", "Savings Calculator", "About", "Logout"};
+        for (String text : buttons) {
+            JButton btn = new JButton(text);
+            btn.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+            btn.setFocusPainted(false);
+            btn.setBackground(Color.WHITE);
+            btn.addActionListener(new MenuActionListener());
+            sidebar.add(btn);
+        }
+        add(sidebar, BorderLayout.WEST);
+
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
+        mainPanel.add(new DashboardPanel(), "Dashboard");
+        mainPanel.add(new AddExpensePanel(), "Add Expense");
+        mainPanel.add(new BudgetPanel(), "Set Budget");
+        mainPanel.add(new GoalPanel(), "Create Goal");
+        mainPanel.add(new SavingsCalculatorPanel(), "Savings Calculator");
+        mainPanel.add(new AboutPanel(), "About");
+
+        add(mainPanel, BorderLayout.CENTER);
+        setVisible(true);
+    }
+
+    // Establish connection
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+    }
+
+    private class MenuActionListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String command = e.getActionCommand();
+            if (command.equals("Logout")) {
+                JOptionPane.showMessageDialog(null, "You have logged out successfully!");
+                System.exit(0);
+            } else {
+                cardLayout.show(mainPanel, command);
+            }
+        }
+    }
+
+    class DashboardPanel extends JPanel {
+        public DashboardPanel() {
+            setLayout(new BorderLayout());
+            JLabel label = new JLabel("<html><center><h1>Welcome to your Dashboard!</h1><br>"
+                    + "Track your expenses, set budgets, and achieve your goals!</center></html>", JLabel.CENTER);
+            add(label, BorderLayout.CENTER);
+        }
+    }
