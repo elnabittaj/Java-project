@@ -1,0 +1,90 @@
+class AddExpensePanel extends JPanel {
+    JTextField amountField, dateField, noteField;
+    JComboBox<String> categoryBox;
+    JTable expenseTable;
+    DefaultTableModel model;
+
+    public AddExpensePanel() {
+        setLayout(new BorderLayout());
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JLabel header = new JLabel("Add Expense", JLabel.CENTER);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        formPanel.add(header, gbc);
+
+        gbc.gridwidth = 1;
+        gbc.gridy++;
+        formPanel.add(new JLabel("Amount (₹):"), gbc);
+        gbc.gridx = 1;
+        amountField = new JTextField(15);
+        formPanel.add(amountField, gbc);
+
+        gbc.gridx = 0; gbc.gridy++;
+        formPanel.add(new JLabel("Date (YYYY-MM-DD):"), gbc);
+        gbc.gridx = 1;
+        dateField = new JTextField();
+        formPanel.add(dateField, gbc);
+
+        gbc.gridx = 0; gbc.gridy++;
+        formPanel.add(new JLabel("Category:"), gbc);
+        gbc.gridx = 1;
+        categoryBox = new JComboBox<>(new String[]{"Food", "Books", "Travel", "Shopping", "Other"});
+        formPanel.add(categoryBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy++;
+        formPanel.add(new JLabel("Note:"), gbc);
+        gbc.gridx = 1;
+        noteField = new JTextField();
+        formPanel.add(noteField, gbc);
+
+        gbc.gridx = 0; gbc.gridy++;
+        gbc.gridwidth = 2;
+        JButton addButton = new JButton("Add Expense");
+        formPanel.add(addButton, gbc);
+
+        add(formPanel, BorderLayout.NORTH);
+
+        model = new DefaultTableModel(new String[]{"Amount", "Date", "Category", "Note"}, 0);
+        expenseTable = new JTable(model);
+        add(new JScrollPane(expenseTable), BorderLayout.CENTER);
+
+        loadExpenses();
+
+        addButton.addActionListener(e -> {
+            try (Connection conn = getConnection()) {
+                String sql = "INSERT INTO expenses (amount, date, category, note) VALUES (?, ?, ?, ?)";
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ps.setDouble(1, Double.parseDouble(amountField.getText()));
+                ps.setString(2, dateField.getText());
+                ps.setString(3, (String) categoryBox.getSelectedItem());
+                ps.setString(4, noteField.getText());
+                ps.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Expense Added Successfully!");
+                loadExpenses();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+            }
+        });
+    }
+
+    private void loadExpenses() {
+        try (Connection conn = getConnection()) {
+            model.setRowCount(0);
+            Statement st = conn.createStatement();
+            ResultSet rs = st.executeQuery("SELECT * FROM expenses");
+            while (rs.next()) {
+                model.addRow(new Object[]{
+                    rs.getDouble("amount"), rs.getString("date"),
+                    rs.getString("category"), rs.getString("note")
+                });
+            }
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+    }
+}
