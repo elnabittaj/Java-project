@@ -7,11 +7,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-/**
- * === MEMBER 1 ===
- * Main application frame, navigation, database connection and core wiring.
- * (Member 1 is responsible for project setup, main frame & navigation)
- */
 public class StudentFinancialPlanner extends JFrame {
 
     private CardLayout cardLayout;
