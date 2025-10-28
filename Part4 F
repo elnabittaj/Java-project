@@ -1,0 +1,124 @@
+
+package database;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.Statement;
+
+/**
+ * === MEMBER 4 ===
+ * Dashboard, View Records (no ID column), About.
+ * (Member 4 is responsible for dashboard, viewing data & about page)
+ */
+public class DashboardViewAboutPanels {
+
+    // Dashboard panel
+    public static class DashboardPanel extends JPanel {
+        public DashboardPanel() {
+            setLayout(new BorderLayout());
+            setBackground(new Color(245, 248, 253));
+            JLabel h = new JLabel("Welcome to Student Financial Planner", SwingConstants.CENTER);
+            h.setFont(new Font("Segoe UI", Font.BOLD, 28));
+            h.setBorder(BorderFactory.createEmptyBorder(30, 10, 10, 10));
+            add(h, BorderLayout.NORTH);
+
+            JTextArea ta = new JTextArea(
+                    "This application helps you track expenses, set monthly budgets, create financial goals,\n"
+                            + "and calculate simple savings plans.\n\nUse the left sidebar to navigate between pages."
+            );
+            ta.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+            ta.setEditable(false);
+            ta.setBackground(new Color(245, 248, 253));
+            ta.setBorder(BorderFactory.createEmptyBorder(10, 60, 10, 60));
+            add(ta, BorderLayout.CENTER);
+        }
+    }
+
+    // View Records panel (no ID column)
+    public static class ViewRecordsPanel extends JPanel {
+        private final DefaultTableModel expensesModel = new DefaultTableModel();
+        private final DefaultTableModel budgetsModel = new DefaultTableModel();
+        private final DefaultTableModel goalsModel = new DefaultTableModel();
+
+        private final JTable expensesTable = new JTable(expensesModel);
+        private final JTable budgetsTable = new JTable(budgetsModel);
+        private final JTable goalsTable = new JTable(goalsModel);
+
+        private final Connection conn;
+
+        public ViewRecordsPanel(Connection conn) {
+            this.conn = conn;
+            setLayout(new BorderLayout());
+            setBackground(Color.WHITE);
+
+            JLabel header = new JLabel("View Records", SwingConstants.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 24));
+            header.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+            add(header, BorderLayout.NORTH);
+
+            JTabbedPane tabs = new JTabbedPane();
+            tabs.add("Expenses", new JScrollPane(expensesTable));
+            tabs.add("Budgets", new JScrollPane(budgetsTable));
+            tabs.add("Goals", new JScrollPane(goalsTable));
+            add(tabs, BorderLayout.CENTER);
+
+            // load initially
+            loadAllTables();
+        }
+
+        // public method other panels call to refresh tables
+        public void loadAllTables() {
+            SwingUtilities.invokeLater(() -> {
+                loadTable("SELECT category, amount, date FROM expenses", expensesModel);
+                loadTable("SELECT month, limit_amount FROM budgets", budgetsModel);
+                loadTable("SELECT name, target_amount, deadline FROM goals", goalsModel);
+            });
+        }
+
+        private void loadTable(String query, DefaultTableModel model) {
+            model.setRowCount(0);
+            model.setColumnCount(0);
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery(query)) {
+                ResultSetMetaData md = rs.getMetaData();
+                int cols = md.getColumnCount();
+                for (int i = 1; i <= cols; i++) model.addColumn(md.getColumnName(i));
+                while (rs.next()) {
+                    Object[] row = new Object[cols];
+                    for (int i = 1; i <= cols; i++) row[i - 1] = rs.getObject(i);
+                    model.addRow(row);
+                }
+            } catch (Exception ex) {
+                // non-fatal, print to stderr
+                System.err.println("Failed to load table: " + ex.getMessage());
+            }
+        }
+    }
+
+    // About panel
+    public static class AboutPanel extends JPanel {
+        public AboutPanel() {
+            setLayout(new BorderLayout());
+            setBackground(Color.WHITE);
+            JLabel header = new JLabel("About", SwingConstants.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 24));
+            header.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+            add(header, BorderLayout.NORTH);
+
+            JTextArea text = new JTextArea(
+                    "Student Financial Planning & Goal Tracker\n" +
+                            "Helps students track expenses, budgets and savings goals.\n\n" +
+                            "Developed using Java Swing and MySQL.\n"
+            );
+            text.setEditable(false);
+            text.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+            text.setBackground(Color.WHITE);
+            text.setBorder(BorderFactory.createEmptyBorder(30, 50, 30, 50));
+            add(text, BorderLayout.CENTER);
+        }
+    }
+}
