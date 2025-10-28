@@ -10,10 +10,8 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
 /**
- * === MEMBER 4 ===
  * Dashboard, View Records (no ID column), About.
- * (Member 4 is responsible for dashboard, viewing data & about page)
- */
+
 public class DashboardViewAboutPanels {
 
     // Dashboard panel
