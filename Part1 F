@@ -1,0 +1,147 @@
+package database;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+/**
+ * === MEMBER 1 ===
+ * Main application frame, navigation, database connection and core wiring.
+ * (Member 1 is responsible for project setup, main frame & navigation)
+ */
+public class StudentFinancialPlanner extends JFrame {
+
+    private CardLayout cardLayout;
+    private JPanel mainPanel;
+    private DashboardViewAboutPanels.ViewRecordsPanel viewPanel; // reference to refresh tables
+    private Connection conn;
+
+    // DB credentials - update if needed
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/student_finance";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "Rose!12140";
+
+    public StudentFinancialPlanner() {
+        setTitle("Student Financial Planning & Goal Tracker System");
+        setSize(1100, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        // connect DB (Member 1)
+        connectDatabase();
+
+        // Left sidebar (dark blue)
+        JPanel sidebar = new JPanel(new GridLayout(8, 1, 12, 12));
+        sidebar.setBackground(new Color(23, 43, 126));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(20, 18, 20, 18));
+        sidebar.setPreferredSize(new Dimension(220, 0));
+
+        String[] names = {"Dashboard", "Add Expense", "Set Budget", "Create Goal",
+                "Savings Calculator", "View Records", "About", "Logout"};
+
+        for (String name : names) {
+            JButton b = new JButton(name);
+            styleSidebarButton(b);
+            sidebar.add(b);
+            b.addActionListener(new SidebarAction());
+        }
+
+        add(sidebar, BorderLayout.WEST);
+
+        // Top header (gradient)
+        JPanel header = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                GradientPaint gp = new GradientPaint(0, 0, new Color(41, 128, 185),
+                        getWidth(), getHeight(), new Color(26, 188, 156));
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        header.setPreferredSize(new Dimension(0, 72));
+        header.setLayout(new BorderLayout());
+        JLabel title = new JLabel("  Student Financial Planning & Goal Tracker");
+        title.setForeground(Color.WHITE);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        header.add(title, BorderLayout.CENTER);
+        add(header, BorderLayout.NORTH);
+
+        // Main content area & panel wiring
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
+        // Create viewPanel first so other panels can call refresh
+        viewPanel = new DashboardViewAboutPanels.ViewRecordsPanel(conn);
+
+        // Panels from other files (Members 2-4)
+        mainPanel.add(new DashboardViewAboutPanels.DashboardPanel(), "Dashboard");
+        mainPanel.add(new ExpenseBudgetPanels.AddExpensePanel(conn, viewPanel), "Add Expense");
+        mainPanel.add(new ExpenseBudgetPanels.BudgetPanel(conn, viewPanel), "Set Budget");
+        mainPanel.add(new GoalSavingsPanels.GoalPanel(conn, viewPanel), "Create Goal");
+        mainPanel.add(new GoalSavingsPanels.SavingsPanel(), "Savings Calculator");
+        mainPanel.add(viewPanel, "View Records");
+        mainPanel.add(new DashboardViewAboutPanels.AboutPanel(), "About");
+
+        add(mainPanel, BorderLayout.CENTER);
+
+        // start on Dashboard
+        cardLayout.show(mainPanel, "Dashboard");
+        setVisible(true);
+    }
+
+    // Database connection (Member 1)
+    private void connectDatabase() {
+        try {
+            conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            System.out.println("Connected to database");
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Database connection failed: " + e.getMessage(),
+                    "DB Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Sidebar button style (Member 1)
+    private void styleSidebarButton(JButton b) {
+        b.setForeground(Color.WHITE);
+        b.setBackground(new Color(56, 68, 170));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        b.setBorder(BorderFactory.createEmptyBorder(12, 10, 12, 10));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setOpaque(true);
+        b.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) { b.setBackground(new Color(78, 97, 208)); }
+            public void mouseExited(java.awt.event.MouseEvent evt)  { b.setBackground(new Color(56, 68, 170)); }
+        });
+    }
+
+    // Sidebar action (Member 1)
+    private class SidebarAction implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String cmd = e.getActionCommand();
+            if ("Logout".equals(cmd)) {
+                int ok = JOptionPane.showConfirmDialog(StudentFinancialPlanner.this,
+                        "Are you sure you want to logout?", "Confirm", JOptionPane.YES_NO_OPTION);
+                if (ok == JOptionPane.YES_OPTION) System.exit(0);
+                return;
+            }
+            if ("View Records".equals(cmd)) {
+                // refresh before showing
+                if (viewPanel != null) viewPanel.loadAllTables();
+            }
+            cardLayout.show(mainPanel, cmd);
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(StudentFinancialPlanner::new);
+    }
+}
