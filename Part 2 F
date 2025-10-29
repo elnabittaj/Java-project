@@ -1,0 +1,219 @@
+package database;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+/**
+ * === MEMBER 2 ===
+ * Expense & Budget modules.
+ * (Member 2 is responsible for Add Expense and Set Budget panels)
+ *
+ * Each panel accepts a Connection and a reference to ViewRecordsPanel so it can call loadAllTables()
+ * after inserting new rows (so the View Records tab refreshes immediately).
+ */
+public class ExpenseBudgetPanels {
+
+    // ---------- AddExpensePanel ----------
+    public static class AddExpensePanel extends JPanel {
+        private final JTextField categoryField;
+        private final JTextField amountField;
+        private final JTextField dateField;
+
+        private final Connection conn;
+        private final DashboardViewAboutPanels.ViewRecordsPanel viewPanel;
+
+        public AddExpensePanel(Connection conn, DashboardViewAboutPanels.ViewRecordsPanel viewPanel) {
+            this.conn = conn;
+            this.viewPanel = viewPanel;
+
+            categoryField = createInputField();
+            amountField = createInputField();
+            dateField = createInputField();
+
+            setLayout(new BorderLayout());
+            setBackground(Color.WHITE);
+
+            JLabel header = new JLabel("Add Expense", SwingConstants.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            header.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+            add(header, BorderLayout.NORTH);
+
+            JPanel form = new JPanel(new GridBagLayout());
+            form.setBackground(Color.WHITE);
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(10,12,10,12);
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.weightx = 1;
+
+            addRow(form, gbc, 0, "Category:", categoryField);
+            addRow(form, gbc, 1, "Amount (₹):", amountField);
+            addRow(form, gbc, 2, "Date (YYYY-MM-DD):", dateField);
+
+            JButton save = new JButton("Add Expense");
+            stylePrimaryButton(save);
+            gbc.gridx = 1; gbc.gridy = 3; gbc.anchor = GridBagConstraints.CENTER;
+            form.add(save, gbc);
+
+            add(form, BorderLayout.CENTER);
+
+            save.addActionListener(e -> onSave());
+        }
+
+        private void onSave() {
+            String category = categoryField.getText().trim();
+            String amount = amountField.getText().trim();
+            String date = dateField.getText().trim();
+
+            if (category.isEmpty()) { showError("Category required."); return; }
+            if (!isDouble(amount)) { showError("Enter a valid numeric amount."); return; }
+            if (!isValidDate(date)) { showError("Enter date in YYYY-MM-DD format."); return; }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO expenses (category, amount, date) VALUES (?, ?, ?)")) {
+                ps.setString(1, category);
+                ps.setDouble(2, Double.parseDouble(amount));
+                ps.setString(3, date);
+                ps.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Expense added.", "Info", JOptionPane.INFORMATION_MESSAGE);
+                categoryField.setText(""); amountField.setText(""); dateField.setText("");
+                if (viewPanel != null) viewPanel.loadAllTables();
+            } catch (SQLException ex) {
+                showError("DB error: " + ex.getMessage());
+            }
+        }
+
+        // small utilities (duplicate but self-contained)
+        private JTextField createInputField() {
+            JTextField f = new JTextField(20);
+            f.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            f.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(200,200,200)),
+                    BorderFactory.createEmptyBorder(6,8,6,8)
+            ));
+            return f;
+        }
+        private void addRow(JPanel panel, GridBagConstraints gbc, int y, String label, JTextField field) {
+            gbc.gridx = 0; gbc.gridy = y; gbc.weightx = 0;
+            panel.add(new JLabel(label), gbc);
+            gbc.gridx = 1; gbc.weightx = 1;
+            panel.add(field, gbc);
+        }
+        private void stylePrimaryButton(JButton b) {
+            b.setBackground(new Color(41, 128, 185));
+            b.setForeground(Color.WHITE);
+            b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            b.setFocusPainted(false);
+            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            b.setBorder(BorderFactory.createEmptyBorder(8,14,8,14));
+        }
+        private void showError(String msg) {
+            JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        private boolean isDouble(String s) {
+            if (s == null || s.trim().isEmpty()) return false;
+            try { Double.parseDouble(s); return true; } catch (Exception e) { return false; }
+        }
+        private boolean isValidDate(String s) {
+            return s != null && s.matches("\\d{4}-\\d{2}-\\d{2}");
+        }
+    }
+
+    // ---------- BudgetPanel ----------
+    public static class BudgetPanel extends JPanel {
+        private final JTextField monthField;
+        private final JTextField limitField;
+
+        private final Connection conn;
+        private final DashboardViewAboutPanels.ViewRecordsPanel viewPanel;
+
+        public BudgetPanel(Connection conn, DashboardViewAboutPanels.ViewRecordsPanel viewPanel) {
+            this.conn = conn;
+            this.viewPanel = viewPanel;
+
+            monthField = createInputField();
+            limitField = createInputField();
+
+            setLayout(new BorderLayout());
+            setBackground(Color.WHITE);
+
+            JLabel header = new JLabel("Set Monthly Budget", SwingConstants.CENTER);
+            header.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            header.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+            add(header, BorderLayout.NORTH);
+
+            JPanel form = new JPanel(new GridBagLayout());
+            form.setBackground(Color.WHITE);
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(10,12,10,12);
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.weightx = 1;
+
+            addRow(form, gbc, 0, "Month (e.g., January):", monthField);
+            addRow(form, gbc, 1, "Budget Limit (₹):", limitField);
+
+            JButton save = new JButton("Set Budget");
+            stylePrimaryButton(save);
+            gbc.gridx = 1; gbc.gridy = 2;
+            form.add(save, gbc);
+
+            add(form, BorderLayout.CENTER);
+
+            save.addActionListener(e -> onSave());
+        }
+
+        private void onSave() {
+            String month = monthField.getText().trim();
+            String limit = limitField.getText().trim();
+            if (month.isEmpty() || !month.matches("[a-zA-Z ]+")) { showError("Month must contain only letters."); return; }
+            if (!isDouble(limit)) { showError("Enter valid numeric budget limit."); return; }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO budgets (month, limit_amount) VALUES (?, ?)")) {
+                ps.setString(1, month);
+                ps.setDouble(2, Double.parseDouble(limit));
+                ps.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Budget saved.", "Info", JOptionPane.INFORMATION_MESSAGE);
+                monthField.setText(""); limitField.setText("");
+                if (viewPanel != null) viewPanel.loadAllTables();
+            } catch (SQLException ex) {
+                showError("DB error: " + ex.getMessage());
+            }
+        }
+
+        // small utilities
+        private JTextField createInputField() {
+            JTextField f = new JTextField(20);
+            f.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            f.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(200,200,200)),
+                    BorderFactory.createEmptyBorder(6,8,6,8)
+            ));
+            return f;
+        }
+        private void addRow(JPanel panel, GridBagConstraints gbc, int y, String label, JTextField field) {
+            gbc.gridx = 0; gbc.gridy = y; gbc.weightx = 0;
+            panel.add(new JLabel(label), gbc);
+            gbc.gridx = 1; gbc.weightx = 1;
+            panel.add(field, gbc);
+        }
+        private void stylePrimaryButton(JButton b) {
+            b.setBackground(new Color(41, 128, 185));
+            b.setForeground(Color.WHITE);
+            b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            b.setFocusPainted(false);
+            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            b.setBorder(BorderFactory.createEmptyBorder(8,14,8,14));
+        }
+        private void showError(String msg) {
+            JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        private boolean isDouble(String s) {
+            if (s == null || s.trim().isEmpty()) return false;
+            try { Double.parseDouble(s); return true; } catch (Exception e) { return false; }
+        }
+    }
+}
