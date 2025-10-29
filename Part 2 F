@@ -7,8 +7,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-/**
- * === MEMBER 2 ===
  * Expense & Budget modules.
  * (Member 2 is responsible for Add Expense and Set Budget panels)
  *
